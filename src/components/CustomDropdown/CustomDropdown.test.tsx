@@ -1,0 +1,207 @@
+
+import { useState } from 'react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  CustomDropdown,
+  type DropdownOption,
+} from './CustomDropdown'
+
+const options: DropdownOption[] = [
+  { label: 'React', value: 'react' },
+  { label: 'Vue', value: 'vue' },
+  { label: 'Angular', value: 'angular' },
+  { label: 'Solid', value: 'solid', disabled: true },
+]
+
+describe('CustomDropdown', () => {
+  it('renders the placeholder when no value is selected', () => {
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        placeholder="Choose a framework"
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Framework' }),
+    ).toHaveTextContent('Choose a framework')
+  })
+
+  it('opens and closes the options list', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <CustomDropdown ariaLabel="Framework" options={options} />,
+    )
+
+    const trigger = screen.getByRole('button', {
+      name: 'Framework',
+    })
+
+    await user.click(trigger)
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(trigger)
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('selects an option and calls onChange', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }))
+    await user.click(screen.getByRole('option', { name: 'Vue' }))
+
+    expect(onChange).toHaveBeenCalledWith('vue')
+    expect(
+      screen.getByRole('button', { name: 'Framework' }),
+    ).toHaveTextContent('Vue')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('supports controlled values', async () => {
+    const user = userEvent.setup()
+
+    function ControlledDropdown() {
+      const [value, setValue] = useState('react')
+
+      return (
+        <>
+          <CustomDropdown
+            ariaLabel="Framework"
+            options={options}
+            value={value}
+            onChange={setValue}
+          />
+          <output>{value}</output>
+        </>
+      )
+    }
+
+    render(<ControlledDropdown />)
+
+    expect(screen.getByRole('button', { name: 'Framework' }))
+      .toHaveTextContent('React')
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }))
+    await user.click(screen.getByRole('option', { name: 'Vue' }))
+
+    expect(screen.getByRole('button', { name: 'Framework' }))
+      .toHaveTextContent('Vue')
+    expect(screen.getByText('vue')).toBeInTheDocument()
+  })
+
+  it('does not select disabled options', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }))
+    await user.click(screen.getByRole('option', { name: 'Solid' }))
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+  })
+
+  it('closes when clicking outside', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <>
+        <CustomDropdown
+          ariaLabel="Framework"
+          options={options}
+        />
+        <button type="button">Outside</button>
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Outside' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows a message when there are no options', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <CustomDropdown ariaLabel="Framework" options={[]} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }))
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(screen.getByText('No options available')).toBeInTheDocument()
+  })
+
+  it('does not open when disabled', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        disabled
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Framework' })
+
+    expect(trigger).toBeDisabled()
+
+    await user.click(trigger)
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('closes on an outside mouse event', () => {
+    render(
+      <>
+        <CustomDropdown
+          ariaLabel="Framework"
+          options={options}
+        />
+        <button type="button">Outside</button>
+      </>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Framework' }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'Outside' }))
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})

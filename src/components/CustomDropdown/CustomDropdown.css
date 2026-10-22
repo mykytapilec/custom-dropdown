@@ -111,3 +111,16 @@
     transition: none;
   }
 }
+
+.custom-dropdown__option--active {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-dropdown__trigger,
+  .custom-dropdown__arrow,
+  .custom-dropdown__option {
+    transition: none;
+  }
+}

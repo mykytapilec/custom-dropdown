@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import './CustomDropdown.css';
 
 export interface DropdownOption {
@@ -7,13 +13,15 @@ export interface DropdownOption {
   disabled?: boolean;
 }
 
-interface CustomDropdownProps {
+export interface CustomDropdownProps {
   options: DropdownOption[];
   value?: string;
+  defaultValue?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   ariaLabel?: string;
+  id?: string;
 }
 
 type OpenDirection = 'first' | 'last';
@@ -21,14 +29,23 @@ type OpenDirection = 'first' | 'last';
 export function CustomDropdown({
   options,
   value,
+  defaultValue,
   onChange,
   placeholder = 'Select an option',
   disabled = false,
   ariaLabel = 'Select an option',
+  id,
 }: CustomDropdownProps) {
+  const generatedId = useId();
+  const instanceId = id ?? generatedId;
+  const listboxId = `${instanceId}-listbox`;
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [internalValue, setInternalValue] = useState(value ?? '');
+  const [internalValue, setInternalValue] = useState(
+    () => defaultValue ?? value ?? '',
+  );
+
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -169,10 +186,9 @@ export function CustomDropdown({
 
         if (!isOpen) {
           openDropdown('first');
-          moveActiveOptionToBoundary('first');
-        } else {
-          moveActiveOptionToBoundary('first');
         }
+
+        moveActiveOptionToBoundary('first');
         break;
 
       case 'End':
@@ -180,10 +196,9 @@ export function CustomDropdown({
 
         if (!isOpen) {
           openDropdown('last');
-          moveActiveOptionToBoundary('last');
-        } else {
-          moveActiveOptionToBoundary('last');
         }
+
+        moveActiveOptionToBoundary('last');
         break;
 
       case 'Enter':
@@ -228,10 +243,10 @@ export function CustomDropdown({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-controls="custom-dropdown-listbox"
+        aria-controls={listboxId}
         aria-activedescendant={
           isOpen && activeIndex >= 0
-            ? `custom-dropdown-option-${activeIndex}`
+            ? `${instanceId}-option-${activeIndex}`
             : undefined
         }
         disabled={disabled}
@@ -257,7 +272,7 @@ export function CustomDropdown({
 
       {isOpen && (
         <ul
-          id="custom-dropdown-listbox"
+          id={listboxId}
           className="custom-dropdown__list"
           role="listbox"
           aria-label={ariaLabel}
@@ -269,7 +284,7 @@ export function CustomDropdown({
           ) : (
             options.map((option, index) => (
               <li
-                id={`custom-dropdown-option-${index}`}
+                id={`${instanceId}-option-${index}`}
                 key={option.value}
                 className={[
                   'custom-dropdown__option',

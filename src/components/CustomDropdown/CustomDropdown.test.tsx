@@ -113,6 +113,20 @@ describe('CustomDropdown', () => {
     expect(screen.getByText('vue')).toBeInTheDocument();
   });
 
+  it('supports defaultValue for uncontrolled usage', () => {
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        defaultValue="vue"
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Framework' }),
+    ).toHaveTextContent('Vue');
+  });
+
   it('does not select disabled options', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -281,5 +295,71 @@ describe('CustomDropdown', () => {
     fireEvent.keyDown(trigger, { key: 'Enter' });
 
     expect(trigger).toHaveTextContent('Svelte');
+  });
+
+  it('keeps the active option separate from the selected option', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CustomDropdown
+        ariaLabel="Framework"
+        options={options}
+        value="react"
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Framework' }));
+
+    const reactOption = screen.getByRole('option', { name: 'React' });
+    const vueOption = screen.getByRole('option', { name: 'Vue' });
+
+    expect(reactOption).toHaveAttribute('aria-selected', 'true');
+    expect(vueOption).toHaveAttribute('aria-selected', 'false');
+
+    fireEvent.mouseMove(vueOption);
+
+    expect(vueOption).toHaveClass('custom-dropdown__option--active');
+    expect(reactOption).not.toHaveClass('custom-dropdown__option--active');
+    expect(reactOption).toHaveAttribute('aria-selected', 'true');
+  });
+
+    it('assigns unique listbox IDs to multiple dropdown instances', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <>
+        <CustomDropdown options={options} ariaLabel="First dropdown" />
+        <CustomDropdown options={options} ariaLabel="Second dropdown" />
+      </>,
+    );
+
+    const firstTrigger = screen.getByRole('button', {
+      name: 'First dropdown',
+    });
+    const secondTrigger = screen.getByRole('button', {
+      name: 'Second dropdown',
+    });
+
+    const firstListboxId = firstTrigger.getAttribute('aria-controls');
+    const secondListboxId = secondTrigger.getAttribute('aria-controls');
+
+    expect(firstListboxId).toBeTruthy();
+    expect(secondListboxId).toBeTruthy();
+    expect(firstListboxId).not.toBe(secondListboxId);
+
+    await user.click(firstTrigger);
+
+    expect(document.getElementById(firstListboxId!)).toHaveAttribute(
+      'role',
+      'listbox',
+    );
+
+    await user.click(secondTrigger);
+
+    expect(document.getElementById(firstListboxId!)).not.toBeInTheDocument();
+    expect(document.getElementById(secondListboxId!)).toHaveAttribute(
+      'role',
+      'listbox',
+    );
   });
 });
